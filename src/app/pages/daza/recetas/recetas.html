@@ -1,0 +1,202 @@
+<div class="flex flex-col">
+    <div class="card">
+        <div class="font-semibold text-xl mb-4">Listado de Recetas</div>
+
+        <p-dataView #dv [value]="loading ? skeletonItems : recipes" [paginator]="true" [rows]="rows" [totalRecords]="totalRecords" [lazy]="true" 
+            (onLazyLoad)="onPageChange($event)" layout="grid" class="relative min-h-80 max-h-[calc(100vh-200px)] overflow-y-auto">
+            <ng-template #header>
+                <div class="flex flex-wrap justify-content-end gap-2">
+                    <span class="text-color-secondary">Total de recetas: {{totalRecords}}</span>
+                </div>
+            </ng-template>
+
+            <ng-template #grid let-items>
+                <div class="grid grid-cols-12 gap-4 w-full">
+                    <div *ngFor="let recipe of items" class="col-span-12 sm:col-span-6 lg:col-span-4 xl:col-span-3 p-2">
+                        <div class="p-4 border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded flex flex-col h-full">
+                            <div class="flex flex-wrap items-center justify-between gap-2 mb-2" *ngIf="!loading">
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-tag"></i>
+                                    <span class="font-semibold">{{ recipe.cuisine }}</span>
+                                </div>
+                                <p-tag [value]="recipe.difficulty" [severity]="getDifficultyTagSeverity(recipe.difficulty)"></p-tag>
+                            </div>
+                            <div class="flex flex-col items-center text-center my-3" *ngIf="!loading">
+                                <img [src]="recipe.image" [alt]="recipe.name" class="w-full h-48 object-cover shadow-md rounded-t" />
+                                <div class="text-2xl font-bold mt-3">{{ recipe.name }}</div>
+                                <p-rating [ngModel]="recipe.rating" [readonly]="true"></p-rating>
+                            </div>
+                            <div class="flex flex-col gap-2 mt-auto" *ngIf="!loading">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-color-secondary">Prep: {{ recipe.prepTimeMinutes }} min</span>
+                                    <span class="text-sm text-color-secondary">Cook: {{ recipe.cookTimeMinutes }} min</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-color-secondary">Servings: {{ recipe.servings }}</span>
+                                    <span class="text-sm text-color-secondary">Cals: {{ recipe.caloriesPerServing }}</span>
+                                </div>
+                                <div class="flex flex-wrap gap-1 mt-2">
+                                    <p-chip *ngFor="let tag of recipe.tags" [label]="tag" class="text-xs"></p-chip>
+                                </div>
+                                <div class="flex gap-2 mt-3">
+                                    <p-button icon="pi pi-info-circle" [outlined]="true" size="small" (onClick)="showRecipeDetails(recipe)" pTooltip="Detalles"></p-button>
+                                    <p-button icon="pi pi-user-plus" [outlined]="true" severity="secondary" size="small" (onClick)="showAssignUserDialog(recipe)" pTooltip="Asignar"></p-button>
+                                    <p-button icon="pi pi-users" [outlined]="true" severity="info" size="small" (onClick)="showAssignedUsers(recipe)" pTooltip="Ver Usuarios"></p-button>
+                                </div>
+                            </div>
+
+                            <!-- Skeleton Layout -->
+                            <div *ngIf="loading" class="flex flex-col h-full">
+                                <div class="flex justify-between mb-2">
+                                    <p-skeleton width="5rem" height="1.5rem"></p-skeleton>
+                                    <p-skeleton width="4rem" height="1.5rem"></p-skeleton>
+                                </div>
+                                <div class="flex flex-col items-center my-3">
+                                    <p-skeleton width="100%" height="12rem" borderRadius="8px"></p-skeleton>
+                                    <p-skeleton width="80%" height="2rem" styleClass="mt-3"></p-skeleton>
+                                    <p-skeleton width="40%" height="1rem" styleClass="mt-2"></p-skeleton>
+                                </div>
+                                <div class="flex flex-col gap-2 mt-auto">
+                                    <div class="flex justify-between">
+                                        <p-skeleton width="4rem"></p-skeleton>
+                                        <p-skeleton width="4rem"></p-skeleton>
+                                    </div>
+                                    <div class="flex gap-2 mt-3">
+                                        <p-skeleton shape="circle" size="2.5rem"></p-skeleton>
+                                        <p-skeleton shape="circle" size="2.5rem"></p-skeleton>
+                                        <p-skeleton shape="circle" size="2.5rem"></p-skeleton>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </ng-template>
+
+            <ng-template #empty>
+                <div class="flex flex-col items-center justify-center p-10 text-center border-dashed border-2 surface-border">
+                    <div class="rounded-full bg-primary-100 p-4 mb-4">
+                        <i class="pi pi-box text-4xl text-primary"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-900 mb-2">No se encontraron recetas</h3>
+                    <p class="text-600 max-w-sm line-height-3">
+                        Parece que no hay recetas disponibles en este momento o tu búsqueda no arrojó resultados.
+                    </p>
+                </div>
+            </ng-template>
+        </p-dataView>
+    </div>
+
+    <!-- Dialogo de Detalles de Receta -->
+    <p-dialog header="Detalles de la Receta" [(visible)]="displayDetailsDialog" [modal]="true" [style]="{ width: '50vw' }" [breakpoints]="{ '960px': '75vw', '641px': '100vw' }">
+        <div *ngIf="selectedRecipe" class="flex flex-col gap-4">
+            <div class="flex flex-col md:flex-row gap-4">
+                <img [src]="selectedRecipe.image" [alt]="selectedRecipe.name" class="w-full md:w-5/12 flex-shrink-0 rounded shadow-md" />
+                <div class="flex flex-col flex-grow">
+                    <h3 class="text-2xl font-bold mt-0 mb-2">{{ selectedRecipe.name }}</h3>
+                    <p-rating [ngModel]="selectedRecipe.rating" [readonly]="true" class="mb-3"></p-rating>
+                    <div class="grid">
+                        <div class="col-12 md:col-6">
+                            <div class="font-medium text-color-secondary">Dificultad:</div>
+                            <p-tag [value]="selectedRecipe.difficulty" [severity]="getDifficultyTagSeverity(selectedRecipe.difficulty)"></p-tag>
+                        </div>
+                        <div class="col-12 md:col-6">
+                            <div class="font-medium text-color-secondary">Cocina:</div>
+                            <span>{{ selectedRecipe.cuisine }}</span>
+                        </div>
+                        <div class="col-12 md:col-6">
+                            <div class="font-medium text-color-secondary">Tiempo de Preparación:</div>
+                            <span>{{ selectedRecipe.prepTimeMinutes }} minutos</span>
+                        </div>
+                        <div class="col-12 md:col-6">
+                            <div class="font-medium text-color-secondary">Tiempo de Cocción:</div>
+                            <span>{{ selectedRecipe.cookTimeMinutes }} minutos</span>
+                        </div>
+                        <div class="col-12 md:col-6">
+                            <div class="font-medium text-color-secondary">Porciones:</div>
+                            <span>{{ selectedRecipe.servings }}</span>
+                        </div>
+                        <div class="col-12 md:col-6">
+                            <div class="font-medium text-color-secondary">Calorías por Porción:</div>
+                            <span>{{ selectedRecipe.caloriesPerServing }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <p-divider></p-divider>
+
+            <div>
+                <h4 class="text-xl font-bold">Ingredientes:</h4>
+                <ul class="list-disc pl-4">
+                    <li *ngFor="let ingredient of selectedRecipe.ingredients">{{ ingredient }}</li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="text-xl font-bold">Instrucciones:</h4>
+                <ol class="list-decimal pl-4">
+                    <li *ngFor="let instruction of selectedRecipe.instructions">{{ instruction }}</li>
+                </ol>
+            </div>
+
+            <div *ngIf="selectedRecipe.tags && selectedRecipe.tags.length > 0">
+                <h4 class="text-xl font-bold">Etiquetas:</h4>
+                <div class="flex flex-wrap gap-2">
+                    <p-chip *ngFor="let tag of selectedRecipe.tags" label="{{tag}}"></p-chip>
+                </div>
+            </div>
+        </div>
+        <ng-template pTemplate="footer">
+            <p-button label="Cerrar" icon="pi pi-times" (onClick)="displayDetailsDialog = false"></p-button>
+        </ng-template>
+    </p-dialog>
+
+    <!-- Dialogo de Asignar Usuario a Receta -->
+    <p-dialog header="Asignar Usuarios a {{selectedRecipe?.name}}" [(visible)]="displayAssignUserDialog" [modal]="true" [style]="{ width: '40vw' }" [breakpoints]="{ '960px': '75vw', '641px': '100vw' }">
+        <div class="flex flex-col gap-3">
+            <p>Seleccione los usuarios a los que desea asignar esta receta:</p>
+            <p-multiSelect [options]="users" [(ngModel)]="selectedUsersForAssignment" optionLabel="username"
+                placeholder="Seleccionar Usuarios" [filter]="true" display="chip"
+                [style]="{ width: '100%' }" scrollHeight="250px" appendTo="body">
+                <ng-template let-user pTemplate="item">
+                    <div class="flex align-items-center gap-3 py-1">
+                        <p-avatar [image]="user.image" shape="circle" size="normal"></p-avatar>
+                        <div class="flex flex-col">
+                            <span class="font-medium">{{ user.firstName }} {{ user.lastName }}</span>
+                            <small class="text-color-secondary">@{{ user.username }}</small>
+                        </div>
+                    </div>
+                </ng-template>
+            </p-multiSelect>
+        </div>
+        <ng-template pTemplate="footer">
+            <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text" (onClick)="displayAssignUserDialog = false"></p-button>
+            <p-button label="Asignar" icon="pi pi-check" (onClick)="assignUsersToRecipe()"></p-button>
+        </ng-template>
+    </p-dialog>
+
+    <!-- Dialogo de Usuarios Asignados a Receta -->
+    <p-dialog header="Usuarios Asignados a {{selectedRecipe?.name}}" [(visible)]="displayAssignedUsersDialog" [modal]="true" [style]="{ width: '30vw' }" [breakpoints]="{ '960px': '75vw', '641px': '100vw' }">
+        <div *ngIf="assignedUsersToRecipe.length > 0; else noAssignedUsers" class="flex flex-col gap-3">
+            <div *ngFor="let user of assignedUsersToRecipe" class="flex align-items-center gap-3 p-2 border-round surface-100">
+                <p-avatar [image]="user.image" shape="circle" size="large"></p-avatar>
+                <div class="flex flex-col">
+                    <span class="font-medium">{{ user.firstName }} {{ user.lastName }}</span>
+                    <small class="text-color-secondary">@{{ user.username }}</small>
+                </div>
+            </div>
+        </div>
+        <ng-template #noAssignedUsers>
+            <div class="flex flex-col items-center justify-center p-5 text-center">
+                <i class="pi pi-info-circle text-4xl text-500 mb-3"></i>
+                <p class="text-color-secondary">Esta receta aún no tiene usuarios asignados.</p>
+            </div>
+        </ng-template>
+        <ng-template pTemplate="footer">
+            <p-button label="Cerrar" icon="pi pi-times" (onClick)="displayAssignedUsersDialog = false"></p-button>
+        </ng-template>
+    </p-dialog>
+
+    <p-toast></p-toast>
+</div>

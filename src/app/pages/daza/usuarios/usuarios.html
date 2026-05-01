@@ -1,0 +1,170 @@
+ <div class="flex flex-col">
+            <div class="card">
+                <div class="font-semibold text-xl mb-4">Usuarios</div>
+                <p-toolbar   >
+                    <ng-template #start>
+                        <div class="relative flex items-center p-5" [style]="{ width: '350px' }">
+                            <p-autocomplete
+                                [(ngModel)]="searchQuery"
+                                [suggestions]="filteredUsers"
+                                (completeMethod)="filterUsers($event)"
+                                (onSelect)="onUserSelect($event)"
+                                field="username"
+                                placeholder="Buscar por nombre, apellido o usuario..."
+                                [dropdown]="true"
+                                [minQueryLength]="0"
+                                class="w-full"
+                                styleClass="w-full"
+                                inputStyleClass="w-full"
+                            >
+                                <ng-template let-user #item>
+                                    <div class="flex items-center gap-3">
+                                        <p-avatar [image]="user.image" shape="circle" size="normal" />
+                                        <div class="flex flex-col">
+                                            <span class="font-medium">{{ user.firstName }} {{ user.lastName }}</span>
+                                            <small class="text-color-secondary">@{{ user.username }} • {{ user.gender }}</small>
+                                        </div>
+                                    </div>
+                                </ng-template>
+                            </p-autocomplete>
+                        </div>
+                    </ng-template>
+
+                    <ng-template #center>
+                        
+                    </ng-template>
+
+                    <ng-template #end></ng-template>
+                </p-toolbar>
+            </div>
+
+            <!-- Panel Inicial / Sin Selección -->
+            <div *ngIf="!selectedUser && !loading" class="card flex flex-col items-center justify-center p-10 text-center border-dashed border-2 surface-border fadein animation-duration-500">
+                <div class="rounded-full bg-primary-100 p-4 mb-4">
+                    <i class="pi pi-search text-4xl text-primary"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-900 mb-2">Búsqueda de Usuarios</h3>
+                <p class="text-600 max-w-sm line-height-3">
+                    Utilice el buscador de la barra superior para localizar un usuario por su 
+                    <strong>nombre, apellido o alias</strong>. Haga clic en la flecha para ver la lista completa.
+                </p>
+                <div class="flex gap-2 mt-4">
+                    <span class="p-tag p-tag-rounded p-tag-info">DummyJSON API</span>
+                    <span class="p-tag p-tag-rounded p-tag-secondary">{{users.length}} usuarios disponibles</span>
+                </div>
+            </div>
+
+            <!-- Detalle del Usuario Seleccionado (Ahora dentro del flujo principal) -->
+            <div *ngIf="selectedUser && !loading" class="card fadein animation-duration-500">
+                <div class="flex justify-between items-start mb-6">
+                    <div class="flex items-center gap-4">
+                        <p-avatar [image]="selectedUser.image" size="xlarge" shape="circle" class="shadow-md"></p-avatar>
+                        <div>
+                            <h2 class="text-3xl font-bold m-0">{{ selectedUser.firstName }} {{ selectedUser.lastName }}</h2>
+                            <p class="text-color-secondary m-0">
+                                <i [class]="getGenderIcon(selectedUser.gender)"></i>
+                                @{{ selectedUser.username }} | {{ selectedUser.role | uppercase }}
+                            </p>
+                        </div>
+                    </div>
+                    <p-button icon="pi pi-times" severity="secondary" [rounded]="true" [text]="true" (onClick)="clearSelection()" pTooltip="Cerrar y volver a buscar"></p-button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Información Personal -->
+                    <div class="surface-ground p-4 border-round shadow-1">
+                        <div class="text-primary font-bold mb-3 border-b-1 border-primary-200 pb-2">Información Personal</div>
+                        <div class="flex flex-col gap-2">
+                            <div><strong>Email:</strong> {{ selectedUser.email }}</div>
+                            <div><strong>Teléfono:</strong> {{ selectedUser.phone }}</div>
+                            <div><strong>Edad:</strong> {{ selectedUser.age }} años</div>
+                            <div><strong>Cumpleaños:</strong> {{ selectedUser.birthDate }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Información Profesional -->
+                    <div class="surface-ground p-4 border-round shadow-1">
+                        <div class="text-primary font-bold mb-3 border-b-1 border-primary-200 pb-2">Empresa</div>
+                        <div class="flex flex-col gap-2">
+                            <div><strong>Nombre:</strong> {{ selectedUser.company?.name }}</div>
+                            <div><strong>Cargo:</strong> {{ selectedUser.company?.title }}</div>
+                            <div><strong>Departamento:</strong> {{ selectedUser.company?.department }}</div>
+                            <div><strong>Ubicación:</strong> {{ selectedUser.company?.address?.city }}, {{ selectedUser.company?.address?.state }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Otros Datos -->
+                    <div class="surface-ground p-4 border-round shadow-1">
+                        <div class="text-primary font-bold mb-3 border-b-1 border-primary-200 pb-2">Datos Técnicos</div>
+                        <div class="flex flex-col gap-2">
+                            <div><strong>IP:</strong> {{ selectedUser.ip }}</div>
+                            <div><strong>MAC:</strong> {{ selectedUser.macAddress }}</div>
+                            <div><strong>Crypto:</strong> {{ selectedUser.crypto?.coin }} ({{ selectedUser.crypto?.network }})</div>
+                            <div><strong>Universidad:</strong> {{ selectedUser.university }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recetas Favoritas del Usuario -->
+                <div class="card mt-6">
+                    <h3 class="text-2xl font-bold mb-4">Recetas Favoritas</h3>
+
+                    <p-dataView [value]="loadingFavoriteRecipes ? skeletonItems : favoriteRecipes" layout="grid" [paginator]="false">
+                        <ng-template #grid let-items>
+                            <div class="grid grid-cols-12 gap-4">
+                                <div *ngFor="let recipe of items" class="col-span-12 sm:col-span-6 lg:col-span-4 p-2">
+                                    <div class="p-4 border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded flex flex-col h-full">
+                                        <div class="flex flex-wrap items-center justify-between gap-2" *ngIf="!loadingFavoriteRecipes">
+                                            <div class="flex items-center gap-2">
+                                                <i class="pi pi-tag"></i>
+                                                <span class="font-semibold">{{ recipe.cuisine }}</span>
+                                            </div>
+                                            <p-tag [value]="recipe.difficulty" [severity]="getDifficultyTagSeverity(recipe.difficulty)"></p-tag>
+                                        </div>
+                                        <div class="flex flex-col items-center text-center my-3" *ngIf="!loadingFavoriteRecipes">
+                                            <img [src]="recipe.image" [alt]="recipe.name" class="w-9 shadow-md rounded" />
+                                            <div class="text-xl font-bold mt-3">{{ recipe.name }}</div>
+                                            <p-rating [ngModel]="recipe.rating" [readonly]="true"></p-rating>
+                                        </div>
+                                        <div class="flex flex-col gap-2 mt-auto" *ngIf="!loadingFavoriteRecipes">
+                                            <div class="flex justify-between items-center">
+                                                <span class="text-sm text-color-secondary">Prep: {{ recipe.prepTimeMinutes }} min</span>
+                                                <span class="text-sm text-color-secondary">Cook: {{ recipe.cookTimeMinutes }} min</span>
+                                            </div>
+                                            <div class="flex flex-wrap gap-1 mt-2">
+                                                <p-chip *ngFor="let tag of recipe.tags" [label]="tag" styleClass="text-[10px]"></p-chip>
+                                            </div>
+                                        </div>
+
+                                        <!-- Skeleton Layout -->
+                                        <div *ngIf="loadingFavoriteRecipes" class="flex flex-col h-full">
+                                            <div class="flex justify-between mb-2">
+                                                <p-skeleton width="4rem" height="1.2rem"></p-skeleton>
+                                                <p-skeleton width="3rem" height="1.2rem"></p-skeleton>
+                                            </div>
+                                            <div class="flex flex-col items-center my-3">
+                                                <p-skeleton width="80%" height="8rem" borderRadius="8px"></p-skeleton>
+                                                <p-skeleton width="70%" height="1.5rem" styleClass="mt-3"></p-skeleton>
+                                                <p-skeleton width="30%" height="1rem" styleClass="mt-2"></p-skeleton>
+                                            </div>
+                                            <div class="flex flex-col gap-2 mt-auto">
+                                                <div class="flex justify-between">
+                                                    <p-skeleton width="3rem"></p-skeleton>
+                                                    <p-skeleton width="3rem"></p-skeleton>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </ng-template>
+                        <ng-template pTemplate="empty">
+                            <div class="flex flex-col items-center justify-center p-5 text-center border-dashed border-2 surface-border">
+                                <i class="pi pi-heart-fill text-4xl text-primary mb-3"></i>
+                                <p class="text-color-secondary">Este usuario aún no tiene recetas favoritas asignadas.</p>
+                            </div>
+                        </ng-template>
+                    </p-dataView>
+                </div>
+            </div>
+    </div>
